@@ -18,76 +18,52 @@ export const parseExcelFile = (file: File): Promise<ExcelParseResult> => {
         }
 
         const workbook = XLSX.read(data, { type: 'binary' });
-        
-        // Handle Products Sheet
-        const productsSheet = workbook.Sheets['Products'] || workbook.Sheets[workbook.SheetNames[0]];
-        if (!productsSheet) {
-          throw new Error('No product worksheet found in Excel file');
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!sheet) {
+          throw new Error('No worksheet found in Excel file');
         }
 
         // Convert to JSON
-        const productData = XLSX.utils.sheet_to_json(productsSheet);
-        
-        if (!Array.isArray(productData) || productData.length === 0) {
-          throw new Error('No valid product data found in Excel file');
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        if (!Array.isArray(rows) || rows.length === 0) {
+          throw new Error('No valid data found in Excel file');
         }
 
-        // Map to Product type
-        const products: Product[] = productData.map((row: any) => ({
-          barcode: row.Barcode?.toString() || '',
-          quantity: parseInt(row.Quantity) || 0,
-          size: row.Size?.toString() || '',
-          color: row.Color?.toString() || '',
-          age: row.Age?.toString() || '',
-          styleNumber: row.StyleNumber?.toString() || '',
-          department: row.Department?.toString() || '',
-          retailPrice: parseFloat(row.RetailPrice) || 0,
-          location: row.Location?.toString() || 'Main Store',
-          boxNumber: row.BoxNumber?.toString() || undefined
-        }));
+        // Map to Product type and collect unique boxes
+        const products: Product[] = [];
+        const boxMap: Record<string, Box> = {};
 
-        // Validate required product fields
-        const invalidProducts = products.filter(
-          p => !p.barcode || !p.styleNumber || !p.department
-        );
+        rows.forEach((row: any) => {
+          const boxNumber = row.CTN?.toString() || undefined;
+          const product: Product = {
+            barcode: row['item code']?.toString() || '',
+            quantity: parseInt(row.qty) || 0,
+            size: row.size?.toString() || '',
+            color: row.color?.toString() || '',
+            age: '',
+            styleNumber: row['style code']?.toString() || row['style number']?.toString() || '',
+            department: '',
+            retailPrice: 0,
+            location: boxNumber ? 'Box' : 'Main Store',
+            boxNumber
+          };
+          products.push(product);
 
-        if (invalidProducts.length > 0) {
-          throw new Error('Some products are missing required fields (Barcode, Style Number, or Department)');
-        }
-
-        // Handle Boxes Sheet
-        const boxesSheet = workbook.Sheets['Boxes'];
-        let boxes: Box[] = [];
-
-        if (boxesSheet) {
-          const boxData = XLSX.utils.sheet_to_json(boxesSheet);
-          
-          if (Array.isArray(boxData) && boxData.length > 0) {
-            boxes = boxData.map((row: any) => ({
-              id: row.BoxNumber?.toString() || '',
-              name: row.BoxName?.toString() || '',
-              location: row.Location?.toString() || 'Back Store',
-              products: []
-            }));
-
-            // Validate required box fields
-            const invalidBoxes = boxes.filter(b => !b.id || !b.name);
-            if (invalidBoxes.length > 0) {
-              throw new Error('Some boxes are missing required fields (Box Number or Name)');
+          // Create or update box
+          if (boxNumber) {
+            if (!boxMap[boxNumber]) {
+              boxMap[boxNumber] = {
+                id: boxNumber,
+                name: `Box ${boxNumber}`,
+                location: 'Back Store',
+                products: []
+              };
             }
-
-            // Associate products with boxes
-            products.forEach(product => {
-              if (product.boxNumber) {
-                const box = boxes.find(b => b.id === product.boxNumber);
-                if (box) {
-                  box.products.push(product);
-                }
-              }
-            });
+            boxMap[boxNumber].products.push(product);
           }
-        }
-        
+        });
+
+        const boxes = Object.values(boxMap);
         resolve({ products, boxes });
       } catch (error) {
         reject(error);
