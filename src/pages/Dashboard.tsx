@@ -36,37 +36,35 @@ export const Dashboard: React.FC = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 mb-6">
         <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Total Inventory</h3>
-              <Package className="h-8 w-8 opacity-80" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-medium">Total Inventory</h3>
+              <Package className="h-7 w-7 sm:h-8 sm:w-8 opacity-80" />
             </div>
-            <p className="text-3xl font-bold">{totalInventory.toLocaleString()}</p>
-            <p className="text-indigo-100 mt-1">items in stock</p>
+            <p className="text-2xl sm:text-3xl font-bold">{totalInventory.toLocaleString()}</p>
+            <p className="text-indigo-100 mt-1 text-sm sm:text-base">items in stock</p>
           </CardContent>
         </Card>
-        
         <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Product Variants</h3>
-              <ShoppingBag className="h-8 w-8 opacity-80" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-medium">Product Variants</h3>
+              <ShoppingBag className="h-7 w-7 sm:h-8 sm:w-8 opacity-80" />
             </div>
-            <p className="text-3xl font-bold">{products.length.toLocaleString()}</p>
-            <p className="text-emerald-100 mt-1">unique products</p>
+            <p className="text-2xl sm:text-3xl font-bold">{products.length.toLocaleString()}</p>
+            <p className="text-emerald-100 mt-1 text-sm sm:text-base">unique products</p>
           </CardContent>
         </Card>
-        
         <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Storage Boxes</h3>
-              <PackageOpen className="h-8 w-8 opacity-80" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-medium">Storage Boxes</h3>
+              <PackageOpen className="h-7 w-7 sm:h-8 sm:w-8 opacity-80" />
             </div>
-            <p className="text-3xl font-bold">{boxes.length.toLocaleString()}</p>
-            <p className="text-amber-100 mt-1">boxes in use</p>
+            <p className="text-2xl sm:text-3xl font-bold">{boxes.length.toLocaleString()}</p>
+            <p className="text-amber-100 mt-1 text-sm sm:text-base">boxes in use</p>
           </CardContent>
         </Card>
       </div>

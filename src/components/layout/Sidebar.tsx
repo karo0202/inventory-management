@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   BarChart4, 
@@ -9,7 +9,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Box,
-  LogOut
+  LogOut,
+  X as CloseIcon
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
@@ -42,18 +43,25 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, collapsed })
   );
 };
 
-export const Sidebar: React.FC = () => {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
+  const [collapsed, setCollapsed] = React.useState(false);
   const { currentUser, logout, isStockManager } = useAuth();
-  
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
+
+  // Close sidebar on mobile when a link is clicked
+  const handleLinkClick = () => {
+    if (window.innerWidth < 768) setOpen(false);
   };
-  
-  return (
+
+  // Sidebar content
+  const sidebarContent = (
     <div
       className={clsx(
-        'h-screen bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out',
+        'h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -62,53 +70,59 @@ export const Sidebar: React.FC = () => {
           <h1 className="text-xl font-bold text-indigo-700">StockTrack</h1>
         </div>
         <button
-          onClick={toggleSidebar}
-          className="p-1 rounded-md hover:bg-slate-100 text-slate-500"
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 rounded-md hover:bg-slate-100 text-slate-500 md:block hidden"
         >
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
+        {/* Mobile close button */}
+        <button
+          onClick={() => setOpen(false)}
+          className="p-1 rounded-md hover:bg-slate-100 text-slate-500 md:hidden block ml-2"
+        >
+          <CloseIcon size={20} />
+        </button>
       </div>
-      
       <div className="flex-1 overflow-y-auto p-3">
         <nav className="space-y-1">
-          <SidebarLink 
-            to="/" 
-            icon={<BarChart4 size={20} />} 
-            label="Dashboard" 
-            collapsed={collapsed} 
-          />
-          <SidebarLink 
-            to="/inventory" 
-            icon={<Search size={20} />} 
-            label="Inventory Lookup" 
-            collapsed={collapsed} 
-          />
-          <SidebarLink 
-            to="/boxes" 
-            icon={<Box size={20} />} 
-            label="Boxes" 
-            collapsed={collapsed} 
-          />
-          
-          {isStockManager && (
-            <>
-              <SidebarLink 
-                to="/upload" 
-                icon={<UploadCloud size={20} />} 
-                label="SOH Upload" 
-                collapsed={collapsed} 
-              />
-              <SidebarLink 
-                to="/users" 
-                icon={<Users size={20} />} 
-                label="User Management" 
-                collapsed={collapsed} 
-              />
-            </>
-          )}
+          <div onClick={handleLinkClick}>
+            <SidebarLink 
+              to="/" 
+              icon={<BarChart4 size={20} />} 
+              label="Dashboard" 
+              collapsed={collapsed} 
+            />
+            <SidebarLink 
+              to="/inventory" 
+              icon={<Search size={20} />} 
+              label="Inventory Lookup" 
+              collapsed={collapsed} 
+            />
+            <SidebarLink 
+              to="/boxes" 
+              icon={<Box size={20} />} 
+              label="Boxes" 
+              collapsed={collapsed} 
+            />
+            {isStockManager && (
+              <>
+                <SidebarLink 
+                  to="/upload" 
+                  icon={<UploadCloud size={20} />} 
+                  label="SOH Upload" 
+                  collapsed={collapsed} 
+                />
+                <SidebarLink 
+                  to="/users" 
+                  icon={<Users size={20} />} 
+                  label="User Management" 
+                  collapsed={collapsed} 
+                />
+              </>
+            )}
+          </div>
         </nav>
       </div>
-      
       <div className="p-3 border-t border-slate-200">
         {!collapsed && currentUser && (
           <div className="mb-3 px-3 py-2">
@@ -118,7 +132,6 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         )}
-        
         <button
           onClick={logout}
           className={clsx(
@@ -131,5 +144,33 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
     </div>
+  );
+
+  // Responsive rendering
+  return (
+    <>
+      {/* Overlay for mobile */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black bg-opacity-30 md:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      {/* Sidebar drawer on mobile, static on desktop */}
+      <aside
+        className={clsx(
+          'fixed z-50 top-0 left-0 h-full md:static md:translate-x-0 transition-transform duration-300',
+          open ? 'translate-x-0' : '-translate-x-full',
+          'md:translate-x-0',
+          'md:block',
+          'w-64',
+          'md:h-screen'
+        )}
+        style={{ width: collapsed ? 64 : 256 }}
+        aria-label="Sidebar"
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 };
