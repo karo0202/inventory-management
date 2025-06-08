@@ -13,17 +13,19 @@
     "clsx": "^2.1.0",
     "localforage": "^1.10.0",
     "lucide-react": "^0.344.0",
-    "quagga": "^0.12.1",
+    "quagga": "^0.6.16",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0",
     "react-webcam": "^7.2.0",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^8.56.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "@vite-pwa/assets-generator": "^0.2.3",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
@@ -35,8 +37,7 @@
     "sharp": "^0.33.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "typescript-eslint": "^0.0.1-alpha.5",
-    "vite": "^5.0.12",
+    "vite": "^6.3.5",
     "vite-plugin-pwa": "^0.17.5"
   }
 }
