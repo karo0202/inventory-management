@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Camera, BarChart4, AlertTriangle } from 'lucide-react';
 import { Input } from '../components/ui/Input';
@@ -9,6 +9,9 @@ import { BarcodeScanner } from '../components/inventory/BarcodeScanner';
 import { useInventory } from '../context/InventoryContext';
 import { Product } from '../types';
 
+const LOW_STOCK_THRESHOLD = 5;
+const LARGE_DATASET_SIZE = 1000;
+
 export const InventoryLookup: React.FC = () => {
   const location = useLocation();
   const { products, searchProducts, getProductByBarcode, getLowStockProducts } = useInventory();
@@ -17,6 +20,9 @@ export const InventoryLookup: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'low-stock'>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   
   // Handle filter from location state if any
   useEffect(() => {
@@ -27,14 +33,37 @@ export const InventoryLookup: React.FC = () => {
   
   // Filter products based on active tab
   useEffect(() => {
-    if (activeTab === 'low-stock') {
-      setSearchResults(getLowStockProducts(5));
-    } else if (searchQuery) {
-      setSearchResults(searchProducts(searchQuery));
-    } else {
-      setSearchResults([]);
-    }
-  }, [activeTab, searchQuery, getLowStockProducts, searchProducts]);
+    setIsLoading(true);
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(() => {
+      if (activeTab === 'low-stock') {
+        if (products.length > LARGE_DATASET_SIZE) {
+          // Use web worker for large datasets
+          if (!workerRef.current) {
+            // @ts-ignore
+            workerRef.current = new Worker(new URL('../utils/lowStockFilter.worker.ts', import.meta.url), { type: 'module' });
+          }
+          workerRef.current.onmessage = (e: MessageEvent) => {
+            setSearchResults(e.data.lowStock);
+            setIsLoading(false);
+          };
+          workerRef.current.postMessage({ products, threshold: LOW_STOCK_THRESHOLD });
+        } else {
+          setSearchResults(getLowStockProducts(LOW_STOCK_THRESHOLD));
+          setIsLoading(false);
+        }
+      } else if (searchQuery) {
+        setSearchResults(searchProducts(searchQuery));
+        setIsLoading(false);
+      } else {
+        setSearchResults([]);
+        setIsLoading(false);
+      }
+    }, 200);
+    return () => {
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    };
+  }, [activeTab, searchQuery, getLowStockProducts, searchProducts, products]);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +143,11 @@ export const InventoryLookup: React.FC = () => {
         </div>
       </div>
       
-      {selectedProduct ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <span className="text-indigo-600 text-lg font-medium">Loading...</span>
+        </div>
+      ) : selectedProduct ? (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-3">Product Details</h2>
           <ProductCard 

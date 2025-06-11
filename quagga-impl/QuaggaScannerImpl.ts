@@ -1,21 +1,20 @@
-import Quagga from 'quagga';
-
-interface ScannerConfig {
-  onDetected: (code: string) => void;
-  onError?: (error: any) => void;
+export interface ScannerConfig {
+  onDetected: (barcode: string) => void;
+  onError?: (error: unknown) => void;
 }
 
-export const initBarcodeScanner = (
-  element: HTMLElement, 
+export async function initBarcodeScanner(
+  element: HTMLElement,
   config: ScannerConfig
-): void => {
+): Promise<void> {
+  const { default: Quagga } = await import('@ericblade/quagga2');
   Quagga.init({
     inputStream: {
       name: "Live",
       type: "LiveStream",
       target: element,
       constraints: {
-        facingMode: "environment", // Use rear camera if available
+        facingMode: "environment",
         width: { min: 640 },
         height: { min: 480 },
         aspectRatio: { min: 1, max: 2 }
@@ -37,24 +36,23 @@ export const initBarcodeScanner = (
       ]
     },
     locate: true
-  }, (err) => {
+  }, (err: unknown) => {
     if (err) {
       if (config.onError) {
         config.onError(err);
       }
       return;
     }
-    
     Quagga.start();
-    
-    Quagga.onDetected((result) => {
+    Quagga.onDetected((result: any) => {
       if (result && result.codeResult) {
         config.onDetected(result.codeResult.code);
       }
     });
   });
-};
+}
 
-export const stopBarcodeScanner = (): void => {
+export async function stopBarcodeScanner() {
+  const { default: Quagga } = await import('@ericblade/quagga2');
   Quagga.stop();
-};
+} 

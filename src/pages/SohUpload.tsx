@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { UploadCloud, FileText, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { Button } from '../components/ui/Button';
@@ -14,6 +14,9 @@ export const SohUpload: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [parsedProducts, setParsedProducts] = useState<Product[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseProgress, setParseProgress] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
@@ -22,18 +25,35 @@ export const SohUpload: React.FC = () => {
       return;
     }
     
+    // Cancel any ongoing parsing
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     setSelectedFile(file);
     setUploadSuccess(false);
     setUploadError(null);
     setParsedProducts([]);
+    setIsParsing(true);
+    setParseProgress(0);
     
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
-      const products = await parseExcelFile(file);
+      const { products } = await parseExcelFile(file, signal);
+      if (signal.aborted) return;
       setParsedProducts(products);
     } catch (error) {
+      if (signal.aborted) return;
       console.error('Error parsing file:', error);
-      setUploadError('Could not parse the Excel file. Please check the format.');
+      setUploadError(error instanceof Error ? error.message : 'Could not parse the Excel file. Please check the format.');
       setSelectedFile(null);
+    } finally {
+      if (!signal.aborted) {
+        setIsParsing(false);
+        setParseProgress(0);
+      }
     }
   };
   
@@ -86,6 +106,20 @@ export const SohUpload: React.FC = () => {
       setUploadError('Failed to update inventory. Please try again.');
     } finally {
       setIsUploading(false);
+    }
+  };
+  
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setSelectedFile(null);
+    setParsedProducts([]);
+    setIsParsing(false);
+    setParseProgress(0);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
   
@@ -144,30 +178,38 @@ export const SohUpload: React.FC = () => {
                   <div>
                     <FileText className="h-12 w-12 text-indigo-500 mx-auto mb-2" />
                     <p className="text-indigo-700 font-medium mb-1">{selectedFile.name}</p>
-                    <p className="text-slate-500 text-sm mb-4">
-                      {parsedProducts.length
-                        ? `${parsedProducts.length} products found`
-                        : 'Processing file...'}
-                    </p>
+                    {isParsing ? (
+                      <div className="mb-4">
+                        <div className="w-full bg-slate-200 rounded-full h-2.5 mb-2">
+                          <div
+                            className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${parseProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-slate-500 text-sm">
+                          Processing file... {parseProgress.toFixed(0)}%
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-sm mb-4">
+                        {parsedProducts.length
+                          ? `${parsedProducts.length} products found`
+                          : 'No products found'}
+                      </p>
+                    )}
                     <div className="flex justify-center space-x-3">
                       <Button
                         variant="primary"
                         onClick={handleUpload}
                         isLoading={isUploading}
-                        disabled={!parsedProducts.length || isUploading}
+                        disabled={!parsedProducts.length || isUploading || isParsing}
                       >
                         {isUploading ? 'Uploading...' : 'Update Inventory'}
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={() => {
-                          setSelectedFile(null);
-                          setParsedProducts([]);
-                          const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                          if (fileInput) {
-                            fileInput.value = '';
-                          }
-                        }}
+                        onClick={handleCancel}
+                        disabled={isUploading}
                       >
                         Cancel
                       </Button>
