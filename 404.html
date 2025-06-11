@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script type="text/javascript">
+    // Define the base path of your GitHub Pages project
+    const BASE_PATH = '/upload/'; // This should match your vite.config.ts base and package.json homepage path
+
+    // Get the full requested path, including query parameters
+    const fullPath = window.location.pathname + window.location.search;
+
+    // Remove the BASE_PATH from the beginning of the fullPath
+    // Ensure it starts with BASE_PATH to avoid issues
+    let pathAfterBase = fullPath.startsWith(BASE_PATH) ? fullPath.substring(BASE_PATH.length) : fullPath;
+
+    // Ensure the hash path starts with a leading slash if it's not empty
+    if (pathAfterBase && !pathAfterBase.startsWith('/')) {
+        pathAfterBase = '/' + pathAfterBase;
+    }
+
+    // Construct the new URL with the hash
+    const newUrl = `${BASE_PATH}#${pathAfterBase}`;
+
+    // Replace the current URL, which will redirect to the root of your application with the correct hash
+    window.location.replace(newUrl);
+  </script>
+</head>
+<body>
+  <p>If you are not redirected automatically, follow this <a href="/">link</a>.</p>
+</body>
+</html> 
