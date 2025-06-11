@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "homepage": "https://karo0202.github.io/upload/",
   "dependencies": {
     "clsx": "^2.1.0",
     "exceljs": "^4.4.0",
@@ -39,6 +40,6 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^6.3.5",
-    "vite-plugin-pwa": "^0.17.5"
+    "vite-plugin-pwa": "^0.21.1"
   }
 }

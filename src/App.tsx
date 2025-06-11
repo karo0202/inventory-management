@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
 import { Layout } from './components/layout/Layout';
@@ -30,7 +30,7 @@ const ProtectedRoute: React.FC<{ element: React.ReactNode; adminOnly?: boolean }
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <InventoryProvider>
           <Routes>
@@ -55,7 +55,7 @@ function App() {
           </Routes>
         </InventoryProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

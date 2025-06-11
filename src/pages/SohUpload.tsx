@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { UploadCloud, FileText, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { parseExcelFile, downloadSampleTemplate } from '../utils/excelParser';
+import { loadTestData } from '../utils/testDataImporter';
 import { Product } from '../types';
 
 export const SohUpload: React.FC = () => {
@@ -16,13 +17,81 @@ export const SohUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
+  const [parseStage, setParseStage] = useState<'reading' | 'parsing' | null>(null);
+  const [processedBytes, setProcessedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [processedRows, setProcessedRows] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
+  const [rowsPerSecond, setRowsPerSecond] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState(0);
+  const [saveStage, setSaveStage] = useState<string | null>(null);
+  const [isTestLoading, setIsTestLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Listen for progress updates
+  useEffect(() => {
+    const handleParseProgress = (event: CustomEvent) => {
+      const { 
+        progress, 
+        stage, 
+        processedBytes: bytes, 
+        totalBytes: total, 
+        processedRows: rows, 
+        totalRows: rowsTotal,
+        rowsPerSecond: rps,
+        estimatedTimeRemaining: timeRemaining
+      } = event.detail;
+      
+      setParseProgress(progress);
+      setParseStage(stage);
+      if (bytes && total) {
+        setProcessedBytes(bytes);
+        setTotalBytes(total);
+      }
+      if (rows && rowsTotal) {
+        setProcessedRows(rows);
+        setTotalRows(rowsTotal);
+      }
+      if (rps) {
+        setRowsPerSecond(rps);
+      }
+      if (typeof timeRemaining === 'number') {
+        setEstimatedTimeRemaining(timeRemaining);
+      }
+    };
+
+    const handleUploadProgress = (event: CustomEvent) => {
+      const { progress, stage } = event.detail;
+      setSaveProgress(progress);
+      setSaveStage(stage);
+    };
+
+    window.addEventListener('excelParseProgress', handleParseProgress as EventListener);
+    window.addEventListener('inventoryUploadProgress', handleUploadProgress as EventListener);
+    return () => {
+      window.removeEventListener('excelParseProgress', handleParseProgress as EventListener);
+      window.removeEventListener('inventoryUploadProgress', handleUploadProgress as EventListener);
+    };
+  }, []);
   
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       setUploadError('Please select an Excel file (.xlsx or .xls)');
       setSelectedFile(null);
       return;
+    }
+
+    // Check file size (warn if > 1GB)
+    if (file.size > 1024 * 1024 * 1024) {
+      const shouldProceed = window.confirm(
+        `This file is ${formatBytes(file.size)}. Processing may take a long time. Do you want to continue?`
+      );
+      if (!shouldProceed) {
+        setSelectedFile(null);
+        return;
+      }
     }
     
     // Cancel any ongoing parsing
@@ -36,6 +105,17 @@ export const SohUpload: React.FC = () => {
     setParsedProducts([]);
     setIsParsing(true);
     setParseProgress(0);
+    setParseStage(null);
+    setProcessedBytes(0);
+    setTotalBytes(file.size);
+    setProcessedRows(0);
+    setTotalRows(0);
+    setRowsPerSecond(0);
+    setEstimatedTimeRemaining(0);
+    setIsSaving(false);
+    setSaveProgress(0);
+    setSaveStage(null);
+    setIsTestLoading(false);
     
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
@@ -53,6 +133,17 @@ export const SohUpload: React.FC = () => {
       if (!signal.aborted) {
         setIsParsing(false);
         setParseProgress(0);
+        setParseStage(null);
+        setProcessedBytes(0);
+        setTotalBytes(0);
+        setProcessedRows(0);
+        setTotalRows(0);
+        setRowsPerSecond(0);
+        setEstimatedTimeRemaining(0);
+        setIsSaving(false);
+        setSaveProgress(0);
+        setSaveStage(null);
+        setIsTestLoading(false);
       }
     }
   };
@@ -88,7 +179,10 @@ export const SohUpload: React.FC = () => {
     if (!parsedProducts.length) return;
     
     setIsUploading(true);
+    setIsSaving(true);
     setUploadError(null);
+    setSaveProgress(0);
+    setSaveStage(null);
     
     try {
       await uploadInventory(parsedProducts);
@@ -106,6 +200,44 @@ export const SohUpload: React.FC = () => {
       setUploadError('Failed to update inventory. Please try again.');
     } finally {
       setIsUploading(false);
+      setIsSaving(false);
+    }
+  };
+  
+  const handleLoadTestData = async () => {
+    setIsTestLoading(true);
+    setUploadSuccess(false);
+    setUploadError(null);
+    setParsedProducts([]);
+    setIsParsing(true);
+    setParseProgress(0);
+    setParseStage(null);
+    setProcessedBytes(0);
+    setTotalBytes(0);
+    setProcessedRows(0);
+    setTotalRows(0);
+    setRowsPerSecond(0);
+    setEstimatedTimeRemaining(0);
+    setIsSaving(false);
+    setSaveProgress(0);
+    setSaveStage(null);
+    
+    try {
+      const { products, boxes } = await loadTestData();
+      setParsedProducts(products);
+      setIsParsing(false);
+      setIsSaving(true);
+      await uploadInventory(products, boxes);
+      setUploadSuccess(true);
+      setSelectedFile(null);
+      setParsedProducts([]);
+    } catch (error) {
+      console.error('Error loading test data:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to load test data.');
+    } finally {
+      setIsTestLoading(false);
+      setIsSaving(false);
+      setIsParsing(false);
     }
   };
   
@@ -117,12 +249,38 @@ export const SohUpload: React.FC = () => {
     setParsedProducts([]);
     setIsParsing(false);
     setParseProgress(0);
+    setParseStage(null);
+    setProcessedBytes(0);
+    setTotalBytes(0);
+    setProcessedRows(0);
+    setTotalRows(0);
+    setRowsPerSecond(0);
+    setEstimatedTimeRemaining(0);
+    setIsSaving(false);
+    setSaveProgress(0);
+    setSaveStage(null);
+    setIsTestLoading(false);
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
   };
   
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds} seconds`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours`;
+    return `${Math.floor(seconds / 86400)} days`;
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 mb-6">SOH Upload</h1>
@@ -178,22 +336,63 @@ export const SohUpload: React.FC = () => {
                   <div>
                     <FileText className="h-12 w-12 text-indigo-500 mx-auto mb-2" />
                     <p className="text-indigo-700 font-medium mb-1">{selectedFile.name}</p>
-                    {isParsing ? (
+                    <p className="text-slate-500 text-sm mb-2">
+                      {formatBytes(selectedFile.size)}
+                    </p>
+                    {isParsing || isSaving ? (
                       <div className="mb-4">
                         <div className="w-full bg-slate-200 rounded-full h-2.5 mb-2">
                           <div
                             className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-                            style={{ width: `${parseProgress}%` }}
+                            style={{ width: `${isSaving ? saveProgress : parseProgress}%` }}
                           />
                         </div>
-                        <p className="text-slate-500 text-sm">
-                          Processing file... {parseProgress.toFixed(0)}%
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-slate-500 text-sm">
+                            {isSaving ? 
+                              `${saveStage || 'Saving...'} ${saveProgress.toFixed(0)}%` :
+                              `${parseStage === 'reading' ? 'Reading file...' : 
+                               parseStage === 'parsing' ? 'Processing data...' : 
+                               'Processing...'} ${parseProgress.toFixed(0)}%`}
+                          </p>
+                          {isParsing && parseStage === 'reading' && processedBytes > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-slate-400 text-xs">
+                                {formatBytes(processedBytes)} of {formatBytes(totalBytes)}
+                              </p>
+                              {estimatedTimeRemaining > 0 && (
+                                <p className="text-slate-400 text-xs">
+                                  Estimated time remaining: {formatTime(estimatedTimeRemaining)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {isParsing && parseStage === 'parsing' && processedRows > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-slate-400 text-xs">
+                                {processedRows.toLocaleString()} of {totalRows.toLocaleString()} rows processed
+                              </p>
+                              {rowsPerSecond > 0 && (
+                                <p className="text-slate-400 text-xs">
+                                  Processing speed: {rowsPerSecond.toLocaleString()} rows/second
+                                </p>
+                              )}
+                              {estimatedTimeRemaining > 0 && (
+                                <p className="text-slate-400 text-xs">
+                                  Estimated time remaining: {formatTime(estimatedTimeRemaining)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {isSaving && saveProgress > 0 && saveStage && (
+                            <p className="text-slate-400 text-xs">{saveStage}</p>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <p className="text-slate-500 text-sm mb-4">
                         {parsedProducts.length
-                          ? `${parsedProducts.length} products found`
+                          ? `${parsedProducts.length.toLocaleString()} products found`
                           : 'No products found'}
                       </p>
                     )}
@@ -202,14 +401,14 @@ export const SohUpload: React.FC = () => {
                         variant="primary"
                         onClick={handleUpload}
                         isLoading={isUploading}
-                        disabled={!parsedProducts.length || isUploading || isParsing}
+                        disabled={!parsedProducts.length || isUploading || isParsing || isSaving}
                       >
                         {isUploading ? 'Uploading...' : 'Update Inventory'}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={handleCancel}
-                        disabled={isUploading}
+                        disabled={isUploading || isSaving}
                       >
                         Cancel
                       </Button>
@@ -234,6 +433,16 @@ export const SohUpload: React.FC = () => {
                     <p className="mt-2 text-xs text-slate-500">
                       Supported formats: .xlsx, .xls
                     </p>
+                    <div className="mt-4">
+                      <Button
+                        variant="secondary"
+                        onClick={handleLoadTestData}
+                        isLoading={isTestLoading}
+                        disabled={isTestLoading || isParsing || isSaving || isUploading}
+                      >
+                        {isTestLoading ? 'Loading Test Data...' : 'Load Test Data (sp soh.xlsx)'}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

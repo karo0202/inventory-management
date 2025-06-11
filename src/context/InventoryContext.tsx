@@ -70,6 +70,15 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
       throw new Error('Invalid products data');
     }
 
+    // Helper to dispatch progress
+    const dispatchUploadProgress = (progress: number, stage: string) => {
+      window.dispatchEvent(new CustomEvent('inventoryUploadProgress', {
+        detail: { progress, stage }
+      }));
+    };
+
+    dispatchUploadProgress(5, 'Processing products...');
+
     // Track changes for history
     const changes = {
       added: 0,
@@ -109,9 +118,17 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     // Calculate removed products
     changes.removed = products.length - changes.updated;
     
+    dispatchUploadProgress(25, 'Updating product state...');
+
     // Update products
     setProducts(productsToKeep);
     
+    dispatchUploadProgress(40, 'Saving products to storage...');
+    // Persist to storage
+    await localforage.setItem('products', productsToKeep);
+    
+    dispatchUploadProgress(60, 'Processing boxes...');
+
     // Update boxes if provided
     if (newBoxes && newBoxes.length > 0) {
       const existingBoxIds = new Set(boxes.map(box => box.id));
@@ -123,10 +140,13 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
       });
       
+      dispatchUploadProgress(75, 'Saving boxes to storage...');
       setBoxes(boxesToKeep);
       await localforage.setItem('boxes', boxesToKeep);
     }
     
+    dispatchUploadProgress(90, 'Saving upload history...');
+
     // Record history
     const newHistoryEntry: StockHistory = {
       date: new Date().toISOString(),
@@ -136,9 +156,10 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     
     setStockHistory([newHistoryEntry, ...stockHistory]);
 
-    // Persist to storage
-    await localforage.setItem('products', productsToKeep);
     await localforage.setItem('stockHistory', [newHistoryEntry, ...stockHistory]);
+
+    dispatchUploadProgress(100, 'Upload complete!');
+
   };
   
   // Get product by barcode

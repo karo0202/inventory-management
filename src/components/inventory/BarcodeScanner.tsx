@@ -13,7 +13,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onDetected, onCl
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
-
+  
   useEffect(() => {
     let isMounted = true;
     if (scannerRef.current) {
@@ -51,7 +51,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onDetected, onCl
       }
     };
   }, [onDetected]);
-
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-lg overflow-hidden w-full max-w-md">
@@ -75,15 +75,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onDetected, onCl
           </div>
         ) : (
           <div className="p-6 flex flex-col items-center">
-            <div
+            <div 
               id="barcode-scanner"
-              ref={scannerRef}
+              ref={scannerRef} 
               style={{ width: 300, height: 300 }}
-            />
+              />
             <Button variant="danger" className="mt-4" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
+                Cancel
+              </Button>
+            </div>
         )}
       </div>
     </div>

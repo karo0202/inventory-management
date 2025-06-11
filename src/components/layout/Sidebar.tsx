@@ -51,12 +51,12 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
   const [collapsed, setCollapsed] = React.useState(false);
   const { currentUser, logout, isStockManager } = useAuth();
-
+  
   // Close sidebar on mobile when a link is clicked
   const handleLinkClick = () => {
     if (window.innerWidth < 768) setOpen(false);
   };
-
+  
   // Sidebar content
   const sidebarContent = (
     <div
@@ -86,40 +86,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
       <div className="flex-1 overflow-y-auto p-3">
         <nav className="space-y-1">
           <div onClick={handleLinkClick}>
-            <SidebarLink 
-              to="/" 
-              icon={<BarChart4 size={20} />} 
-              label="Dashboard" 
-              collapsed={collapsed} 
-            />
-            <SidebarLink 
-              to="/inventory" 
-              icon={<Search size={20} />} 
-              label="Inventory Lookup" 
-              collapsed={collapsed} 
-            />
-            <SidebarLink 
-              to="/boxes" 
-              icon={<Box size={20} />} 
-              label="Boxes" 
-              collapsed={collapsed} 
-            />
-            {isStockManager && (
-              <>
-                <SidebarLink 
-                  to="/upload" 
-                  icon={<UploadCloud size={20} />} 
-                  label="SOH Upload" 
-                  collapsed={collapsed} 
-                />
-                <SidebarLink 
-                  to="/users" 
-                  icon={<Users size={20} />} 
-                  label="User Management" 
-                  collapsed={collapsed} 
-                />
-              </>
-            )}
+          <SidebarLink 
+            to="/" 
+            icon={<BarChart4 size={20} />} 
+            label="Dashboard" 
+            collapsed={collapsed} 
+          />
+          <SidebarLink 
+            to="/inventory" 
+            icon={<Search size={20} />} 
+            label="Inventory Lookup" 
+            collapsed={collapsed} 
+          />
+          <SidebarLink 
+            to="/boxes" 
+            icon={<Box size={20} />} 
+            label="Boxes" 
+            collapsed={collapsed} 
+          />
+          {isStockManager && (
+            <>
+              <SidebarLink 
+                to="/upload" 
+                icon={<UploadCloud size={20} />} 
+                label="SOH Upload" 
+                collapsed={collapsed} 
+              />
+              <SidebarLink 
+                to="/users" 
+                icon={<Users size={20} />} 
+                label="User Management" 
+                collapsed={collapsed} 
+              />
+            </>
+          )}
           </div>
         </nav>
       </div>

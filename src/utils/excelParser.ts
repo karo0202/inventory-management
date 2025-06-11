@@ -11,12 +11,17 @@ export const parseExcelFile = (file: File, signal?: AbortSignal): Promise<ExcelP
     const worker = new Worker(new URL('./excelParser.worker.ts', import.meta.url), { type: 'module' });
     
     worker.onmessage = (e) => {
-      const { type, progress, result, error } = e.data;
+      const { type, progress, stage, result, error } = e.data;
       
       switch (type) {
         case 'progress':
-          // You can use this to update a progress indicator
-          console.log(`Parsing progress: ${progress.toFixed(1)}%`);
+          // Update progress in the UI
+          if (typeof progress === 'number') {
+            // Dispatch a custom event that components can listen to
+            window.dispatchEvent(new CustomEvent('excelParseProgress', {
+              detail: { progress, stage }
+            }));
+          }
           break;
           
         case 'complete':
