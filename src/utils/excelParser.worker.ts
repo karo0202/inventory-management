@@ -84,21 +84,30 @@ self.onmessage = async (e: MessageEvent) => {
     
     let sheet: ExcelJS.Worksheet | undefined;
 
-    // Try to find the worksheet by its specific name 'soh'
+    // 1. Try to find the worksheet by its specific name 'soh'
     sheet = workbook.getWorksheet('soh'); 
 
-    if (!sheet || sheet.actualRowCount === 0) { // If not found by name, or if found but empty
-      // Fallback: Find the first worksheet with actual rows
+    // 2. If not found by name, or if found but actualRowCount is 0, then try iterating
+    if (!sheet || sheet.actualRowCount === 0) {
+      sheet = undefined; // Reset sheet for fallback search
+      // Fallback: Find the first worksheet with actual rows (excluding header)
       for (const ws of workbook.worksheets) {
-        if (ws.actualRowCount > 0) {
+        // Check if the sheet has any rows beyond the header (assuming row 1 is header)
+        if (ws.actualRowCount > 0) { // Using actualRowCount here is usually best for detecting real data
           sheet = ws;
           break;
         }
       }
     }
 
+    // 3. Final fallback: If still no sheet found, just take the very first one
+    // This is a last resort if actualRowCount is unreliable for some reason
+    if (!sheet && workbook.worksheets.length > 0) {
+      sheet = workbook.worksheets[0];
+    }
+
     if (!sheet) {
-      throw new Error('No valid worksheet found in Excel file. Please ensure it contains data and is not empty.');
+      throw new Error('No valid worksheet found in Excel file. Please ensure it contains data and is not empty, or try a different file.');
     }
 
     // Process rows in very large chunks for better performance with massive files
