@@ -44,9 +44,10 @@ export const parseExcelFile = (file: File, signal?: AbortSignal): Promise<ExcelP
       }
     };
     
-    worker.onerror = (error) => {
+    worker.onerror = (errorEvent: ErrorEvent) => {
       worker.terminate();
-      reject(error);
+      console.error('Web Worker Error:', errorEvent.message); // Log the specific error message
+      reject(new Error(errorEvent.message || 'An unknown error occurred in the Excel parsing worker.'));
     };
     
     // Pass only the file, not the signal, to the worker via postMessage
