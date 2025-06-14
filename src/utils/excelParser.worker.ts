@@ -84,9 +84,8 @@ self.onmessage = async (e: MessageEvent) => {
     
     let sheet: ExcelJS.Worksheet | undefined;
 
-    // Try to find the worksheet by a common name, e.g., 'Men Accessories' or 'Products'
-    // You might need to adjust this name based on the exact sheet name in the user's Excel file
-    sheet = workbook.getWorksheet('Men Accessories'); // Try by actual name from screenshot
+    // Try to find the worksheet by its specific name 'soh'
+    sheet = workbook.getWorksheet('soh'); 
 
     if (!sheet || sheet.actualRowCount === 0) { // If not found by name, or if found but empty
       // Fallback: Find the first worksheet with actual rows
