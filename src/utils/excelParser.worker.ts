@@ -84,6 +84,22 @@ self.onmessage = async (e: MessageEvent) => {
     
     let sheet: ExcelJS.Worksheet | undefined;
 
+    // --- Start Logging for Debugging --- //
+    console.log('Workbook loaded. Inspecting worksheets...');
+    console.log(`Total worksheets found: ${workbook.worksheets.length}`);
+    
+    workbook.worksheets.forEach((ws, index) => {
+      console.log(`  Worksheet ${index + 1}: Name = '${ws.name}', actualRowCount = ${ws.actualRowCount}, rowCount = ${ws.rowCount}`);
+      if (ws.rowCount > 0) {
+        const headerRow = ws.getRow(1);
+        // Ensure headerRow.values is an array before slicing
+        const headerValues = Array.isArray(headerRow.values) ? headerRow.values.slice(1, 6) : [];
+        console.log(`    Header (first 5 cells): ${JSON.stringify(headerValues)}`);
+      }
+    });
+    console.log('--- End Logging for Debugging ---');
+    // --- End Logging for Debugging --- //
+
     // 1. Try to find the worksheet by its specific name 'soh'
     sheet = workbook.getWorksheet('soh'); 
 
