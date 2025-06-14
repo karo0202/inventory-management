@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "homepage": "https://karo0202.github.io/upload/",
+  "homepage": "https://karo0202.github.io/inventory-management/",
   "dependencies": {
     "clsx": "^2.1.0",
     "exceljs": "^4.4.0",
