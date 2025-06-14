@@ -10,6 +10,14 @@ export const parseExcelFile = (file: File, signal?: AbortSignal): Promise<ExcelP
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./excelParser.worker.ts', import.meta.url), { type: 'module' });
     
+    // If a signal is provided, terminate the worker when the signal aborts
+    if (signal) {
+      signal.onabort = () => {
+        worker.terminate();
+        reject(new Error('Parsing cancelled')); // Reject the promise if cancelled
+      };
+    }
+
     worker.onmessage = (e) => {
       const { type, progress, stage, result, error } = e.data;
       
@@ -41,7 +49,8 @@ export const parseExcelFile = (file: File, signal?: AbortSignal): Promise<ExcelP
       reject(error);
     };
     
-    worker.postMessage({ file, signal });
+    // Pass only the file, not the signal, to the worker via postMessage
+    worker.postMessage({ file });
   });
 };
 

@@ -121,30 +121,26 @@ export const SohUpload: React.FC = () => {
     const signal = abortControllerRef.current.signal;
 
     try {
-      const { products } = await parseExcelFile(file, signal);
-      if (signal.aborted) return;
+      const { products } = await parseExcelFile(file);
       setParsedProducts(products);
     } catch (error) {
-      if (signal.aborted) return;
       console.error('Error parsing file:', error);
       setUploadError(error instanceof Error ? error.message : 'Could not parse the Excel file. Please check the format.');
       setSelectedFile(null);
     } finally {
-      if (!signal.aborted) {
-        setIsParsing(false);
-        setParseProgress(0);
-        setParseStage(null);
-        setProcessedBytes(0);
-        setTotalBytes(0);
-        setProcessedRows(0);
-        setTotalRows(0);
-        setRowsPerSecond(0);
-        setEstimatedTimeRemaining(0);
-        setIsSaving(false);
-        setSaveProgress(0);
-        setSaveStage(null);
-        setIsTestLoading(false);
-      }
+      setIsParsing(false);
+      setParseProgress(0);
+      setParseStage(null);
+      setProcessedBytes(0);
+      setTotalBytes(0);
+      setProcessedRows(0);
+      setTotalRows(0);
+      setRowsPerSecond(0);
+      setEstimatedTimeRemaining(0);
+      setIsSaving(false);
+      setSaveProgress(0);
+      setSaveStage(null);
+      setIsTestLoading(false);
     }
   };
   
@@ -222,8 +218,12 @@ export const SohUpload: React.FC = () => {
     setSaveProgress(0);
     setSaveStage(null);
     
+    // Pass the signal to loadTestData as it now accepts it for direct worker termination
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
-      const { products, boxes } = await loadTestData();
+      const { products, boxes } = await loadTestData(undefined, signal);
       setParsedProducts(products);
       setIsParsing(false);
       setIsSaving(true);
@@ -238,6 +238,10 @@ export const SohUpload: React.FC = () => {
       setIsTestLoading(false);
       setIsSaving(false);
       setIsParsing(false);
+      // Ensure the AbortController is reset after operation
+      if (abortControllerRef.current) {
+        abortControllerRef.current = null;
+      }
     }
   };
   
@@ -259,13 +263,12 @@ export const SohUpload: React.FC = () => {
     setIsSaving(false);
     setSaveProgress(0);
     setSaveStage(null);
-    setIsTestLoading(false);
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
   };
-  
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -293,22 +296,14 @@ export const SohUpload: React.FC = () => {
             </CardHeader>
             <CardContent>
               {uploadSuccess ? (
-                <div className="p-6 bg-emerald-50 rounded-md border border-emerald-100 flex items-start mb-6">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-emerald-800 mb-1">Upload Successful</h3>
-                    <p className="text-emerald-600 text-sm">
-                      Your inventory has been updated successfully.
-                    </p>
-                  </div>
+                <div className="bg-green-50 text-green-700 p-4 rounded-md flex items-center mb-4">
+                  <CheckCircle2 className="mr-3 h-5 w-5" />
+                  <p className="font-medium">Inventory updated successfully!</p>
                 </div>
               ) : uploadError ? (
-                <div className="p-6 bg-red-50 rounded-md border border-red-100 flex items-start mb-6">
-                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-red-800 mb-1">Upload Failed</h3>
-                    <p className="text-red-600 text-sm">{uploadError}</p>
-                  </div>
+                <div className="bg-red-50 text-red-700 p-4 rounded-md flex items-center mb-4">
+                  <AlertCircle className="mr-3 h-5 w-5" />
+                  <p className="font-medium">{uploadError}</p>
                 </div>
               ) : null}
               
@@ -452,120 +447,42 @@ export const SohUpload: React.FC = () => {
                   Need a template? Download our sample Excel format
                 </p>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Download size={16} />}
+                  variant="ghost"
                   onClick={downloadSampleTemplate}
+                  className="flex items-center text-indigo-600 hover:text-indigo-700"
                 >
+                  <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
               </div>
-              
-              {parsedProducts.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium text-slate-900 mb-3">Preview</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Barcode
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Department
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Style #
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Size/Color
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Quantity
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Price
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {parsedProducts.slice(0, 5).map((product) => (
-                          <tr key={product.barcode}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">
-                              {product.barcode}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {product.department}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {product.styleNumber}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {product.size} / {product.color}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {product.quantity}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              ${product.retailPrice.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {parsedProducts.length > 5 && (
-                      <p className="text-sm text-slate-500 mt-2 text-center">
-                        Showing 5 of {parsedProducts.length} products
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
         
-        <div>
+        <div className="lg:col-span-1">
           <Card>
             <CardHeader>
               <CardTitle>Upload History</CardTitle>
             </CardHeader>
             <CardContent>
               {stockHistory.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-slate-500">No uploads yet</p>
-                </div>
+                <p className="text-slate-500">No upload history yet.</p>
               ) : (
-                <div className="space-y-4">
+                <ul className="space-y-4">
                   {stockHistory.map((entry, index) => (
-                    <div 
-                      key={index} 
-                      className="p-3 border border-slate-200 rounded-md hover:bg-slate-50"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium text-slate-900">{entry.fileName}</h4>
-                          <p className="text-xs text-slate-500">
-                            {new Date(entry.date).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-medium text-emerald-600">
-                            +{entry.changes.added}
-                          </span>
-                          {' / '}
-                          <span className="text-xs font-medium text-amber-600">
-                            ~{entry.changes.updated}
-                          </span>
-                          {' / '}
-                          <span className="text-xs font-medium text-red-600">
-                            -{entry.changes.removed}
-                          </span>
-                        </div>
+                    <li key={index} className="border p-3 rounded-md shadow-sm">
+                      <p className="font-medium text-slate-800">{entry.fileName}</p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(entry.date).toLocaleString()}
+                      </p>
+                      <div className="text-sm mt-1">
+                        <span className="text-green-600 mr-2">+{entry.changes.added}</span>
+                        <span className="text-blue-600 mr-2">~{entry.changes.updated}</span>
+                        <span className="text-red-600">-{entry.changes.removed}</span>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </CardContent>
           </Card>

@@ -3,7 +3,7 @@ import { Product, Box } from '../types';
 
 // Listen for messages from the main thread
 self.onmessage = async (e: MessageEvent) => {
-  const { file, signal } = e.data;
+  const { file } = e.data;
   
   try {
     // Use much larger chunks for terabyte files
@@ -23,10 +23,6 @@ self.onmessage = async (e: MessageEvent) => {
     let isFirstChunk = true;
     
     while (true) {
-      if (signal.aborted) {
-        throw new Error('Parsing cancelled');
-      }
-
       const { done, value } = await reader.read();
       if (done) break;
       
@@ -103,10 +99,6 @@ self.onmessage = async (e: MessageEvent) => {
 
     // Process rows in chunks
     for (let i = 2; i <= totalRows; i += ROW_CHUNK_SIZE) {
-      if (signal.aborted) {
-        throw new Error('Parsing cancelled');
-      }
-
       const chunkEnd = Math.min(i + ROW_CHUNK_SIZE - 1, totalRows);
       const chunkRows = [];
       
@@ -213,7 +205,8 @@ self.onmessage = async (e: MessageEvent) => {
 
 // Helper function to calculate estimated time remaining
 function calculateEstimatedTime(processed: number, total: number, timePerChunk: number): number {
-  const remainingChunks = total - processed;
-  const estimatedTimeRemaining = (remainingChunks * timePerChunk) / 1000; // Convert to seconds
-  return Math.round(estimatedTimeRemaining);
+  if (processed === 0 || timePerChunk === 0) return 0;
+  const remaining = total - processed;
+  const chunksPerMs = processed / timePerChunk;
+  return remaining / chunksPerMs; // Returns time in ms
 } 

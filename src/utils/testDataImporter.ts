@@ -1,7 +1,7 @@
 import { parseExcelFile } from './excelParser';
 import { useInventory } from '../context/InventoryContext';
 
-export const loadTestData = async (fileName: string = 'soh/sp soh.xlsx') => {
+export const loadTestData = async (fileName: string = 'soh/sp soh.xlsx', signal?: AbortSignal) => {
   try {
     // Fetch the file from the public directory
     const response = await fetch(fileName);
@@ -15,8 +15,8 @@ export const loadTestData = async (fileName: string = 'soh/sp soh.xlsx') => {
     
     console.log('Starting to parse test data...');
 
-    // Parse the Excel file using the existing worker
-    const { products, boxes } = await parseExcelFile(file);
+    // Parse the Excel file using the existing worker, passing the signal
+    const { products, boxes } = await parseExcelFile(file, signal);
     
     console.log(`Parsed ${products.length} products from test data.`);
 
