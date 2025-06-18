@@ -7,6 +7,7 @@ import { BoxCard } from '../components/inventory/BoxCard';
 import { ProductCard } from '../components/inventory/ProductCard';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
+import { FixedSizeList as List } from 'react-window';
 
 export const BoxManagement: React.FC = () => {
   const { boxes, createBox, getBoxById } = useInventory();
@@ -82,7 +83,7 @@ export const BoxManagement: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <BoxCard className="h-5 w-5 text-indigo-600 mr-2" />
+                <Box className="h-5 w-5 text-indigo-600 mr-2" />
                 <span>Box Details: {selectedBox.name} (#{selectedBox.id})</span>
               </CardTitle>
             </CardHeader>
@@ -100,10 +101,22 @@ export const BoxManagement: React.FC = () => {
               ) : (
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Box Contents</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedBox.products.map(product => (
-                      <ProductCard key={product.barcode} product={product} />
-                    ))}
+                  <div style={{ width: '100%', height: Math.min(600, selectedBox.products.length * 120) }}>
+                    <List
+                      height={Math.min(600, selectedBox.products.length * 120)}
+                      itemCount={selectedBox.products.length}
+                      itemSize={120}
+                      width={'100%'}
+                    >
+                      {({ index, style }) => {
+                        const product = selectedBox.products[index];
+                        return (
+                          <div style={style} key={product.barcode}>
+                            <ProductCard product={product} />
+                          </div>
+                        );
+                      }}
+                    </List>
                   </div>
                 </div>
               )}
@@ -137,14 +150,25 @@ export const BoxManagement: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {validBoxes.map(box => (
-                <BoxCard 
-                  key={box.id} 
-                  box={box} 
-                  onViewDetails={(id) => setSelectedBoxId(id)} 
-                />
-              ))}
+            <div style={{ width: '100%', height: Math.min(600, validBoxes.length * 120) }}>
+              <List
+                height={Math.min(600, validBoxes.length * 120)}
+                itemCount={validBoxes.length}
+                itemSize={120}
+                width={'100%'}
+              >
+                {({ index, style }) => {
+                  const box = validBoxes[index];
+                  return (
+                    <div style={style} key={box.id}>
+                      <BoxCard 
+                        box={box} 
+                        onViewDetails={(id) => setSelectedBoxId(id)} 
+                      />
+                    </div>
+                  );
+                }}
+              </List>
             </div>
           )}
         </div>

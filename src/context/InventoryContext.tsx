@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import localforage from 'localforage';
+import { db } from '../utils/dexieDB';
 import { Product, Box, StockHistory } from '../types';
 
 interface InventoryContextType {
@@ -31,37 +31,36 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [stockHistory, setStockHistory] = useState<StockHistory[]>([]);
   
-  // Load initial data from local storage
+  // Load initial data from IndexedDB
   useEffect(() => {
     const loadData = async () => {
       try {
-        const storedProducts = await localforage.getItem<Product[]>('products');
-        if (storedProducts) setProducts(storedProducts);
-        
-        const storedBoxes = await localforage.getItem<Box[]>('boxes');
-        if (storedBoxes) setBoxes(storedBoxes);
-        
-        const storedHistory = await localforage.getItem<StockHistory[]>('stockHistory');
-        if (storedHistory) setStockHistory(storedHistory);
+        const storedProducts = await db.products.toArray();
+        if (storedProducts.length) setProducts(storedProducts);
+
+        const storedBoxes = await db.boxes.toArray();
+        if (storedBoxes.length) setBoxes(storedBoxes);
+
+        const storedHistory = await db.stockHistory.toArray();
+        if (storedHistory.length) setStockHistory(storedHistory);
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error loading data from IndexedDB:', error);
       }
     };
-    
     loadData();
   }, []);
-  
-  // Persist data to local storage whenever it changes
+
+  // Persist data to IndexedDB whenever it changes
   useEffect(() => {
-    if (products.length) localforage.setItem('products', products);
+    if (products.length) db.products.bulkPut(products);
   }, [products]);
-  
+
   useEffect(() => {
-    if (boxes.length) localforage.setItem('boxes', boxes);
+    if (boxes.length) db.boxes.bulkPut(boxes);
   }, [boxes]);
-  
+
   useEffect(() => {
-    if (stockHistory.length) localforage.setItem('stockHistory', stockHistory);
+    if (stockHistory.length) db.stockHistory.bulkPut(stockHistory);
   }, [stockHistory]);
   
   // Upload new inventory from Excel file
@@ -124,8 +123,9 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     setProducts(productsToKeep);
     
     dispatchUploadProgress(40, 'Saving products to storage...');
-    // Persist to storage
-    await localforage.setItem('products', productsToKeep);
+    // Persist to IndexedDB
+    await db.products.clear();
+    await db.products.bulkPut(productsToKeep);
     
     dispatchUploadProgress(60, 'Processing boxes...');
 
@@ -142,7 +142,8 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
       
       dispatchUploadProgress(75, 'Saving boxes to storage...');
       setBoxes(boxesToKeep);
-      await localforage.setItem('boxes', boxesToKeep);
+      await db.boxes.clear();
+      await db.boxes.bulkPut(boxesToKeep);
     }
     
     dispatchUploadProgress(90, 'Saving upload history...');
@@ -155,8 +156,7 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
     
     setStockHistory([newHistoryEntry, ...stockHistory]);
-
-    await localforage.setItem('stockHistory', [newHistoryEntry, ...stockHistory]);
+    await db.stockHistory.bulkAdd([newHistoryEntry]);
 
     dispatchUploadProgress(100, 'Upload complete!');
 
@@ -210,9 +210,11 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     setProducts(updatedProducts);
     setBoxes(updatedBoxes);
 
-    // Persist to storage
-    await localforage.setItem('products', updatedProducts);
-    await localforage.setItem('boxes', updatedBoxes);
+    // Persist to IndexedDB
+    await db.products.clear();
+    await db.products.bulkPut(updatedProducts);
+    await db.boxes.clear();
+    await db.boxes.bulkPut(updatedBoxes);
   };
   
   // Create a new box
@@ -224,7 +226,8 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     
     const updatedBoxes = [...boxes, newBox];
     setBoxes(updatedBoxes);
-    await localforage.setItem('boxes', updatedBoxes);
+    await db.boxes.clear();
+    await db.boxes.bulkPut(updatedBoxes);
   };
   
   // Get box by ID
@@ -270,9 +273,11 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     setProducts(updatedProducts);
     setBoxes(updatedBoxes);
 
-    // Persist to storage
-    await localforage.setItem('products', updatedProducts);
-    await localforage.setItem('boxes', updatedBoxes);
+    // Persist to IndexedDB
+    await db.products.clear();
+    await db.products.bulkPut(updatedProducts);
+    await db.boxes.clear();
+    await db.boxes.bulkPut(updatedBoxes);
   };
   
   // Search products by any field

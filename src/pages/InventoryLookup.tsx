@@ -8,6 +8,7 @@ import { ProductCard } from '../components/inventory/ProductCard';
 import { BarcodeScanner } from '../components/inventory/BarcodeScanner';
 import { useInventory } from '../context/InventoryContext';
 import { Product } from '../types';
+import { FixedSizeList as List } from 'react-window';
 
 const LOW_STOCK_THRESHOLD = 5;
 const LARGE_DATASET_SIZE = 1000;
@@ -171,12 +172,22 @@ export const InventoryLookup: React.FC = () => {
           <h2 className="text-lg font-semibold text-slate-900 mb-3">
             {activeTab === 'low-stock' ? 'Low Stock Items' : 'Search Results'}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {searchResults.map(product => (
-              <div key={product.barcode} onClick={() => handleManualSearch(product)}>
-                <ProductCard product={product} />
-              </div>
-            ))}
+          <div style={{ width: '100%', height: Math.min(600, searchResults.length * 120) }}>
+            <List
+              height={Math.min(600, searchResults.length * 120)}
+              itemCount={searchResults.length}
+              itemSize={120}
+              width={'100%'}
+            >
+              {({ index, style }) => {
+                const product = searchResults[index];
+                return (
+                  <div style={style} key={product.barcode} onClick={() => handleManualSearch(product)}>
+                    <ProductCard product={product} />
+                  </div>
+                );
+              }}
+            </List>
           </div>
         </div>
       ) : products.length === 0 ? (

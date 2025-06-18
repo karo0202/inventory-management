@@ -7,6 +7,8 @@ import { parseExcelFile, downloadSampleTemplate } from '../utils/excelParser';
 import { loadTestData } from '../utils/testDataImporter';
 import { Product } from '../types';
 
+// Data is now stored in IndexedDB (via Dexie.js) for high performance and offline support
+
 export const SohUpload: React.FC = () => {
   const { uploadInventory, stockHistory } = useInventory();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
