@@ -100,30 +100,27 @@ self.onmessage = async (e: MessageEvent) => {
     console.log('--- End Logging for Debugging ---');
     // --- End Logging for Debugging --- //
 
-    // 1. Try to find the worksheet by its specific name 'soh'
-    sheet = workbook.getWorksheet('soh'); 
-
-    // 2. If not found by name, or if found but actualRowCount is 0, then try iterating
-    if (!sheet || sheet.actualRowCount === 0) {
-      sheet = undefined; // Reset sheet for fallback search
-      // Fallback: Find the first worksheet with actual rows (excluding header)
-      for (const ws of workbook.worksheets) {
-        // Check if the sheet has any rows beyond the header (assuming row 1 is header)
-        if (ws.actualRowCount > 0) { // Using actualRowCount here is usually best for detecting real data
-          sheet = ws;
-          break;
-        }
+    // 1. Try to find the first worksheet with actual data rows (excluding header)
+    sheet = undefined;
+    for (const ws of workbook.worksheets) {
+      // Check if the sheet has any rows beyond the header (assuming row 1 is header)
+      if (ws.actualRowCount > 1) { // At least one data row
+        sheet = ws;
+        break;
       }
     }
-
-    // 3. Final fallback: If still no sheet found, just take the very first one
-    // This is a last resort if actualRowCount is unreliable for some reason
+    // 2. Fallback: If still not found, just take the very first worksheet
     if (!sheet && workbook.worksheets.length > 0) {
       sheet = workbook.worksheets[0];
     }
-
     if (!sheet) {
-      throw new Error('No valid worksheet found in Excel file. Please ensure it contains data and is not empty, or try a different file.');
+      throw new Error('No worksheet with data found in Excel file. Please ensure your file has at least one worksheet with a header row and data.');
+    }
+    // Check for a valid header row
+    const headerRow = sheet.getRow(1);
+    const headerValues = Array.isArray(headerRow.values) ? headerRow.values.map(v => v?.toString().toLowerCase().trim()).filter(Boolean) : [];
+    if (headerValues.length < 2) {
+      throw new Error('No valid header row found in the first worksheet. Please ensure the first row contains column names.');
     }
 
     // Process rows in very large chunks for better performance with massive files
