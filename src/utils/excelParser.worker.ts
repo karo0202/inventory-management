@@ -123,6 +123,33 @@ self.onmessage = async (e: MessageEvent) => {
       throw new Error('No valid header row found in the first worksheet. Please ensure the first row contains column names.');
     }
 
+    // Build a mapping from normalized header to actual header in the sheet
+    const normalizedHeaderMap: Record<string, string> = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const header = cell.value?.toString().toLowerCase().replace(/\s+/g, '').replace(/_/g, '') || '';
+      normalizedHeaderMap[header] = cell.value?.toString() || '';
+    });
+
+    // Define the mapping from normalized header to Product field
+    const fieldMapping: Record<string, string[]> = {
+      barcode: ['itemcode', 'scancode'],
+      quantity: ['grnitprsikonhand', 'qty'],
+      size: ['size'],
+      color: ['color'],
+      styleNumber: ['itemstyleno', 'stylecode', 'stylenumber'],
+      department: ['department'],
+      retailPrice: ['retailprice', 'price'],
+      boxNumber: ['ctn'],
+    };
+
+    // Helper to get the value from row using the mapping
+    function getFieldValue(row: any, field: string[]): any {
+      for (const key of field) {
+        if (key in row && row[key] != null) return row[key];
+      }
+      return '';
+    }
+
     // Process rows in very large chunks for better performance with massive files
     const ROW_CHUNK_SIZE = 10000; // Process 10,000 rows at a time
     const totalRows = sheet.rowCount;
@@ -142,12 +169,10 @@ self.onmessage = async (e: MessageEvent) => {
       for (let rowNum = i; rowNum <= chunkEnd; rowNum++) {
         const row = sheet.getRow(rowNum);
         const rowData: any = {};
-        
         row.eachCell((cell, colNumber) => {
-          const header = sheet.getRow(1).getCell(colNumber).value?.toString()?.toLowerCase() || '';
+          const header = sheet.getRow(1).getCell(colNumber).value?.toString()?.toLowerCase().replace(/\s+/g, '').replace(/_/g, '') || '';
           rowData[header] = cell.value;
         });
-        
         chunkRows.push(rowData);
         processedRows++;
         rowsProcessedSinceLastUpdate++;
@@ -155,20 +180,19 @@ self.onmessage = async (e: MessageEvent) => {
 
       // Process products in this chunk
       const chunkProducts = chunkRows.map((row: any) => {
-        const boxNumber = row.ctn?.toString() || undefined;
+        const boxNumber = getFieldValue(row, fieldMapping.boxNumber)?.toString() || undefined;
         const product: Product = {
-          barcode: row['item code']?.toString() || '',
-          quantity: parseInt(row.qty) || 0,
-          size: row.size?.toString() || '',
-          color: row.color?.toString() || '',
+          barcode: getFieldValue(row, fieldMapping.barcode)?.toString() || '',
+          quantity: parseInt(getFieldValue(row, fieldMapping.quantity)) || 0,
+          size: getFieldValue(row, fieldMapping.size)?.toString() || '',
+          color: getFieldValue(row, fieldMapping.color)?.toString() || '',
           age: '',
-          styleNumber: row['style code']?.toString() || row['style number']?.toString() || '',
-          department: row.department?.toString() || '',
-          retailPrice: parseFloat(row.price) || 0,
+          styleNumber: getFieldValue(row, fieldMapping.styleNumber)?.toString() || '',
+          department: getFieldValue(row, fieldMapping.department)?.toString() || '',
+          retailPrice: parseFloat(getFieldValue(row, fieldMapping.retailPrice)) || 0,
           location: boxNumber ? 'Box' : 'Main Store',
           boxNumber
         };
-
         if (boxNumber) {
           if (!boxMap[boxNumber]) {
             boxMap[boxNumber] = {
@@ -180,7 +204,6 @@ self.onmessage = async (e: MessageEvent) => {
           }
           boxMap[boxNumber].products.push(product);
         }
-
         return product;
       });
 
