@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { parseExcelFile, downloadSampleTemplate } from '../utils/excelParser';
 import { loadTestData } from '../utils/testDataImporter';
 import { Product } from '../types';
+import CSVUpload from '../components/inventory/CSVUpload';
+import PasteTableUpload from '../components/inventory/PasteTableUpload';
+import ManualEntry from '../components/inventory/ManualEntry';
+import GoogleSheetsInstructions from '../components/inventory/GoogleSheetsInstructions';
 
 // Data is now stored in IndexedDB (via Dexie.js) for high performance and offline support
 
@@ -31,6 +35,7 @@ export const SohUpload: React.FC = () => {
   const [saveStage, setSaveStage] = useState<string | null>(null);
   const [isTestLoading, setIsTestLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [tab, setTab] = useState('csv');
   
   // Listen for progress updates
   useEffect(() => {
@@ -289,6 +294,19 @@ export const SohUpload: React.FC = () => {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 mb-6">SOH Upload</h1>
+      
+      <div className="tabs">
+        <button onClick={() => setTab('csv')}>Excel/CSV Upload</button>
+        <button onClick={() => setTab('paste')}>Copy-Paste Table</button>
+        <button onClick={() => setTab('manual')}>Manual Entry</button>
+        <button onClick={() => setTab('gsheets')}>Google Sheets CSV</button>
+      </div>
+      <div className="tab-content">
+        {tab === 'csv' && <CSVUpload />}
+        {tab === 'paste' && <PasteTableUpload />}
+        {tab === 'manual' && <ManualEntry />}
+        {tab === 'gsheets' && <GoogleSheetsInstructions />}
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
